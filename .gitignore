@@ -1,0 +1,8 @@
+# Ignore binary files
+signature.bin
+
+# Ignore myApp
+myApp
+
+# Ignore .vscode directory
+.vscode/
