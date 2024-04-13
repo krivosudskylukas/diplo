@@ -5,8 +5,9 @@
 #include <openssl/sha.h>  // Include OpenSSL's SHA header
 #include <string.h> // Add this line
 #include <stdio.h>
-#include <iostream>
-#include <exception>
+#include <fstream>  // For file operations
+#include <cstdint>  // For uint8_t
+
 
 // Function prototype for signData
 int signData(FAPI_CONTEXT* fapiContext, TSS2_RC rc, const char* keyPath, const char* dataToSign);

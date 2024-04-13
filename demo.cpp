@@ -4,6 +4,12 @@
 #include <openssl/sha.h>  // Include OpenSSL's SHA header
 
 #include "headers/sign.h"
+#include "headers/create_key.h"
+#include "headers/verify.h"
+#include "headers/create_file.h"
+
+using json = nlohmann::json;
+
 
 // Authentication callback function
 TSS2_RC auth_callback(FAPI_CONTEXT *context, const char *description, char **auth, void *userData) {
@@ -30,52 +36,7 @@ int init(FAPI_CONTEXT* fapiContext,
 }
 
 
-/*int signData(FAPI_CONTEXT* fapiContext,
-    TSS2_RC rc, const char* keyPath, const char* dataToSign ){
-    // Define the data to sign
-    unsigned char hash[SHA256_DIGEST_LENGTH];  // Buffer to store SHA-256 hash
 
-    // Hash the data using SHA-256
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, dataToSign, strlen(dataToSign));
-    SHA256_Final(hash, &sha256);
-
-    // Sign the hashed data
-    uint8_t* signature;
-    size_t signatureSize;
-    rc = Fapi_Sign(fapiContext, keyPath, NULL, hash, sizeof(hash),  &signature, &signatureSize, NULL, NULL);
-    if (rc != TSS2_RC_SUCCESS) {
-        fprintf(stderr, "Failed to sign data: 0x%x\n", rc);
-        Fapi_Finalize(&fapiContext);
-        return 1;
-    }
-
-    // Print the signature
-    printf("Signature:\n");
-    for (size_t i = 0; i < signatureSize; i++) {
-        printf("%02x", signature[i]);
-    }
-    printf("\n");
-
-    // Verify the signature
-    rc = Fapi_VerifySignature(fapiContext, keyPath, hash, sizeof(hash), signature, signatureSize);
-    if (rc == TSS2_RC_SUCCESS) {
-        printf("Signature is valid.\n");
-    } else if (rc == TSS2_FAPI_RC_SIGNATURE_VERIFICATION_FAILED) {
-        printf("Signature is not valid.\n");
-    } else {
-        fprintf(stderr, "Failed to verify signature: 0x%x\n", rc);
-        Fapi_Finalize(&fapiContext);
-        return 1;
-    }
-
-    // Free the signature
-    Fapi_Free(signature);
-
-    return 0;
-}
-*/
 
 int allObjects(FAPI_CONTEXT* fapiContext,
     TSS2_RC rc){
@@ -117,11 +78,8 @@ int getInfo(FAPI_CONTEXT* fapiContext,
 }
 
 
+TSS2_RC initFapiContext(FAPI_CONTEXT* fapiContext){
 
-
-
-int main() {
-   FAPI_CONTEXT* fapiContext;
     TSS2_RC rc;
 
     // Initialize the FAPI context
@@ -139,8 +97,27 @@ int main() {
         return 1;
     }
 
- 
+    return rc;
+}
 
+
+int main() {
+    /*FAPI_CONTEXT* fapiContext;
+    TSS2_RC rc;
+
+    rc = Fapi_Initialize(&fapiContext, NULL);
+    if (rc != TSS2_RC_SUCCESS) {
+        fprintf(stderr, "Failed to initialize FAPI context: 0x%x\n", rc);
+        return 1;
+    }
+
+    // Set the authentication callback
+    rc = Fapi_SetAuthCB(fapiContext, (Fapi_CB_Auth)auth_callback, (void*)"asdfasdfg");
+    if (rc != TSS2_RC_SUCCESS) {
+        fprintf(stderr, "Failed to set authentication callback: 0x%x\n", rc);
+        Fapi_Finalize(&fapiContext);
+        return 1;
+    }
 
     const char* data = "Secret data no one knows";
     const char* keyPath = "/HS/SRK/myRsaKey";
@@ -160,6 +137,22 @@ int main() {
     printf("Encrypted data: %s\n", cipherText);
 
     signData(fapiContext, rc, keyPath, (const char*)cipherText);
+    verifyData(fapiContext, rc, keyPath, (const char*)cipherText);*/
+    string name = "Test";
+    time_t startDate = time(0);
+    time_t expirationDate = createExpirationDate(19,2,2025);
+    vector<string> functionality{ "Scan","Xray","Messages" };
+
+    createJsonFile(name, startDate, expirationDate, functionality);
+    
+    json j = loadJsonFile("licenseFile.json");
+
+    try {
+        createJsonFile(name, startDate, expirationDate, functionality);
+    }
+    catch(const invalid_argument &e){
+        cout << e.what();
+    }
 
     return 0;
 }
