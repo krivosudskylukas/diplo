@@ -11,10 +11,10 @@ LDFLAGS = -L/usr/local/lib
 LDLIBS = -ltss2-fapi -lssl -lcrypto
 
 # Source files
-SOURCES = demo.cpp sources/sign.cpp sources/create_key.cpp sources/verify.cpp sources/create_file.cpp
+SOURCES = demo.cpp sources/sign.cpp sources/create_key.cpp sources/verify.cpp sources/file_util.cpp sources/fapi_util.cpp
 
 # Target binary
-TARGET = myApp
+TARGET = tpmProjectApp
 
 # Default rule
 all: $(TARGET)

@@ -15,6 +15,7 @@ using namespace std;
 json createJsonBase(string name, time_t startDate, time_t expirationDate ,vector<string> functionality);
 void createJsonFile(string name, time_t startDate, time_t expirationDate, vector<string> functionality);
 time_t createExpirationDate();
+time_t createStartingDate();
 json loadJsonFile(string name);
 
 #endif // CREATE_FILE_H
