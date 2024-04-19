@@ -7,5 +7,6 @@
 #include <stdio.h>
 
 int createKey(FAPI_CONTEXT* fapiContext, TSS2_RC rc);
+int deleteKey(FAPI_CONTEXT* fapiContext, TSS2_RC rc);
 
 #endif 

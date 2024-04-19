@@ -72,12 +72,12 @@ TSS2_RC initFapiContext(FAPI_CONTEXT** fapiContext){
     }
 
     // Set the authentication callback
-    rc = Fapi_SetAuthCB(*fapiContext, (Fapi_CB_Auth)auth_callback, (void*)"asdfasdfg");
+    /*rc = Fapi_SetAuthCB(*fapiContext, (Fapi_CB_Auth)auth_callback, (void*)"asdfasdfg");
     if (rc != TSS2_RC_SUCCESS) {
         fprintf(stderr, "Failed to set authentication callback: 0x%x\n", rc);
         Fapi_Finalize(fapiContext);
         return 1;
-    }
+    }*/
 
     return rc;
 }

@@ -1,19 +1,35 @@
 #include "../headers/verify.h"
+#include <openssl/evp.h>
+
 
 int verifyData(FAPI_CONTEXT* fapiContext,
     TSS2_RC rc, const char* keyPath, const char* dataToVerify){
     // Define the data to sign
-    unsigned char hash[SHA256_DIGEST_LENGTH];  // Buffer to store SHA-256 hash
+    //unsigned char hash[SHA256_DIGEST_LENGTH];  // Buffer to store SHA-256 hash
 
     // Sign the hashed data
     //uint8_t* signature;
     size_t signatureSize;
 
-    // Hash the data using SHA-256
-    /*SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, dataToVerify, strlen(dataToVerify));
-    SHA256_Final(hash, &sha256);*/
+    EVP_MD_CTX *mdctx;
+    const EVP_MD *md;
+    unsigned char md_value[EVP_MAX_MD_SIZE];
+    unsigned int md_len;
+
+    OpenSSL_add_all_digests();
+
+    md = EVP_get_digestbyname("sha256");
+
+    if(!md) {
+        printf("Unknown message digest\n");
+        exit(1);
+    }
+    mdctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(mdctx, md, NULL);
+    EVP_DigestUpdate(mdctx, dataToVerify, strlen(dataToVerify));
+    EVP_DigestFinal_ex(mdctx, md_value, &md_len);
+    EVP_MD_CTX_free(mdctx);
+
 
 
     const char* filename = "signature.bin";
@@ -49,7 +65,7 @@ int verifyData(FAPI_CONTEXT* fapiContext,
 
 
     // Verify the signature
-    rc = Fapi_VerifySignature(fapiContext, keyPath, hash, sizeof(hash), signature, signatureSize);
+    rc = Fapi_VerifySignature(fapiContext, keyPath, md_value, md_len, signature, signatureSize);
     if (rc == TSS2_RC_SUCCESS) {
         printf("Signature is valid.\n");
     } else if (rc == TSS2_FAPI_RC_SIGNATURE_VERIFICATION_FAILED) {

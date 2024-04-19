@@ -1,5 +1,5 @@
-#ifndef CREATE_FILE_H
-#define CREATE_FILE_H
+#ifndef FILE_UTIL_H
+#define FILE_UTIL_H
 #include <iostream>
 #include <fstream>
 #include <ctime>
@@ -18,4 +18,4 @@ time_t createExpirationDate();
 time_t createStartingDate();
 json loadJsonFile(string name);
 
-#endif // CREATE_FILE_H
+#endif // FILE_UTIL_H

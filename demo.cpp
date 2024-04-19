@@ -8,6 +8,7 @@
 #include "headers/verify.h"
 #include "headers/file_util.h"
 #include "headers/fapi_util.h"
+#include "headers/crypto_operations.h"
 
 #include <ctime>
 #include <ratio>
@@ -31,27 +32,33 @@ int main() {
 
     rc = initFapiContext(&fapiContext);
 
+    //createKey(fapiContext, rc);
+    //printAllStoredObjects(fapiContext, rc);
+    //deleteKey(fapiContext, rc);
+    //printAllStoredObjects(fapiContext, rc);
 
     string jsonFileContent = loadJsonFile("licenseFile.json").dump();
     const char* data = jsonFileContent.c_str();
-    const char* keyPath = "/HS/SRK/myRsaKey";
+    const char* keyPath = "/HS/SRK/myRsaKeyToDelete";
     uint8_t *cipherText = NULL; 
     size_t cipherTextSize = 0;
 
     printf("Data to be encrypted: %s\n", data);
 
-    rc = Fapi_Encrypt(fapiContext, keyPath, (uint8_t*)data, strlen(data), &cipherText, &cipherTextSize);
-    if (rc != TSS2_RC_SUCCESS) {
-        fprintf(stderr, "Failed to encrypt data: 0x%x\n", rc);
-        Fapi_Finalize(&fapiContext);
-        return 1;
-    }
-    printf("Operation completed successfully.\n");
+    encryptData(fapiContext, &rc, data, keyPath, &cipherText, &cipherTextSize);
+    decryptData(fapiContext, &rc, cipherText, cipherTextSize, keyPath);
+
+    signData(fapiContext, rc, keyPath, (const char*)cipherText);
+    
+    verifyData(fapiContext, rc, keyPath, (const char*)cipherText);
+    
+    //rc = Fapi_Decrypt(fapiContext, keyPath, cipherText, cipherTextSize, &cipherText, &cipherTextSize);
+    /*printf("Operation completed successfully.\n");
 
     printf("Encrypted data: %s\n", cipherText);
 
-    signData(fapiContext, rc, keyPath, (const char*)cipherText);
-    verifyData(fapiContext, rc, keyPath, (const char*)cipherText);
+    
+    v*/
     
     return 0;
 }
