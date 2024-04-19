@@ -17,5 +17,6 @@ void createJsonFile(string name, time_t startDate, time_t expirationDate, vector
 time_t createExpirationDate();
 time_t createStartingDate();
 json loadJsonFile(string name);
+void writeStringFile(string name, string content);
 
 #endif // FILE_UTIL_H

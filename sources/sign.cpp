@@ -4,11 +4,9 @@
 
 int signData(FAPI_CONTEXT* fapiContext,
     TSS2_RC rc, const char* keyPath, const char* dataToSign){
-    // Define the data to sign
-    //unsigned char hash[SHA256_DIGEST_LENGTH];  // Buffer to store SHA-256 hash
 
-
-
+    
+    // Hash the data
     EVP_MD_CTX *mdctx;
     const EVP_MD *md;
     unsigned char md_value[EVP_MAX_MD_SIZE];
@@ -29,12 +27,6 @@ int signData(FAPI_CONTEXT* fapiContext,
     EVP_MD_CTX_free(mdctx);
 
 
-    // Hash the data using SHA-256
-    /*SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, dataToSign, strlen(dataToSign));
-    SHA256_Final(hash, &sha256);*/
-
     // Sign the hashed data
     uint8_t* signature;
     size_t signatureSize;
@@ -52,6 +44,7 @@ int signData(FAPI_CONTEXT* fapiContext,
     }
     printf("\n");
     
+    // Write the signature to a file
     const char* filename = "signature.bin";
     std::ofstream file(filename, std::ios::binary);
 

@@ -2,15 +2,22 @@
 #include <openssl/evp.h>
 
 
+/**
+ * Verifies the signature of the given data using the specified key and signature file.
+ *
+ * @param fapiContext A pointer to the FAPI context.
+ * @param rc The return code of the previous FAPI function call.
+ * @param keyPath The path to the key used for signature verification.
+ * @param dataToVerify The data to be verified.
+ * @return Returns 0 if the signature is valid, otherwise returns a non-zero value.
+ */
+
 int verifyData(FAPI_CONTEXT* fapiContext,
     TSS2_RC rc, const char* keyPath, const char* dataToVerify){
-    // Define the data to sign
-    //unsigned char hash[SHA256_DIGEST_LENGTH];  // Buffer to store SHA-256 hash
 
-    // Sign the hashed data
-    //uint8_t* signature;
     size_t signatureSize;
 
+    // Hash the data to be verified
     EVP_MD_CTX *mdctx;
     const EVP_MD *md;
     unsigned char md_value[EVP_MAX_MD_SIZE];
@@ -30,8 +37,7 @@ int verifyData(FAPI_CONTEXT* fapiContext,
     EVP_DigestFinal_ex(mdctx, md_value, &md_len);
     EVP_MD_CTX_free(mdctx);
 
-
-
+    // Read the signature from the file
     const char* filename = "signature.bin";
     std::ifstream file(filename, std::ios::binary);
 
@@ -56,12 +62,11 @@ int verifyData(FAPI_CONTEXT* fapiContext,
     file.close();
 
      // Print the signature
-    printf("Signature:\n");
+    /*printf("Signature:\n");
     for (size_t i = 0; i < signatureSize; i++) {
         printf("%02x", signature[i]);
     }
-    printf("\n");
-
+    printf("\n");*/
 
 
     // Verify the signature

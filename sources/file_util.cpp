@@ -97,6 +97,16 @@ json loadJsonFile(string name) {
     return data;
 }
 
+void writeStringFile(string name, string content) {
+    ofstream file(name);
+    if (!file.is_open()) {
+        throw runtime_error("Failed to open file: " + name);
+    }
+
+    file << content;
+    file.close();
+}
+
 
 
 /*int main() {

@@ -6,6 +6,6 @@
 #include <string.h>
 
 int encryptData(FAPI_CONTEXT* fapiContext, TSS2_RC* rc, const char* dataToEncrypt, const char* keyPath, uint8_t** cipherText, size_t* cipherTextSize);
-int decryptData(FAPI_CONTEXT* fapiContext, TSS2_RC* rc, const uint8_t* cipherText, size_t cipherTextSize, const char* keyPath);
+int decryptData(FAPI_CONTEXT* fapiContext, TSS2_RC* rc, const uint8_t* cipherText, size_t cipherTextSize, const char* keyPath, uint8_t** decryptedText, size_t* decryptedTextSize);
 
 #endif 
