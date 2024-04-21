@@ -20,6 +20,13 @@ json createJsonBase(string name, time_t startDate, time_t expirationDate ,vector
     };
 }
 
+json createVerificationJson(){
+    return json{
+        {"CustomerId", "Kramare"},
+        {"Request date", time(nullptr)}
+    };
+}
+
 
 void createJsonFile(string name, time_t startDate, time_t expirationDate, vector<string> functionality) {
     const json json = createJsonBase(name, startDate, expirationDate, functionality);

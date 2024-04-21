@@ -12,5 +12,6 @@
 
 // Function prototype for signData
 int verifyData(FAPI_CONTEXT* fapiContext, TSS2_RC rc, const char* keyPath, const char* dataToVerify);
+int verifyDataWithSignatureParam(FAPI_CONTEXT* fapiContext, TSS2_RC rc, const char* keyPath, const char* dataToVerify, uint8_t* signature, size_t signatureSize);
 
 #endif // VERIFY_H

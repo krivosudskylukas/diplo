@@ -67,6 +67,7 @@ int verifyData(FAPI_CONTEXT* fapiContext,
         printf("%02x", signature[i]);
     }
     printf("\n");*/
+    printf("checking signature.\n");
 
 
     // Verify the signature
@@ -83,6 +84,53 @@ int verifyData(FAPI_CONTEXT* fapiContext,
 
     // Free the signature
     Fapi_Free(signature);
+
+    return 0;
+}
+
+int verifyDataWithSignatureParam(FAPI_CONTEXT* fapiContext,
+    TSS2_RC rc, const char* keyPath, const char* dataToVerify, uint8_t* signature, size_t signatureSize){
+
+    // Hash the data to be verified
+    EVP_MD_CTX *mdctx;
+    const EVP_MD *md;
+    unsigned char md_value[EVP_MAX_MD_SIZE];
+    unsigned int md_len;
+
+    OpenSSL_add_all_digests();
+
+    md = EVP_get_digestbyname("sha256");
+
+    if(!md) {
+        printf("Unknown message digest\n");
+        exit(1);
+    }
+    mdctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(mdctx, md, NULL);
+    EVP_DigestUpdate(mdctx, dataToVerify, strlen(dataToVerify));
+    EVP_DigestFinal_ex(mdctx, md_value, &md_len);
+    EVP_MD_CTX_free(mdctx);
+
+     // Print the signature
+    /*printf("Signature:\n");
+    for (size_t i = 0; i < signatureSize; i++) {
+        printf("%02x", signature[i]);
+    }
+    printf("\n");*/
+    printf("checking signature.\n");
+
+
+    // Verify the signature
+    rc = Fapi_VerifySignature(fapiContext, keyPath, md_value, md_len, signature, signatureSize);
+    if (rc == TSS2_RC_SUCCESS) {
+        printf("Signature is valid.\n");
+    } else if (rc == TSS2_FAPI_RC_SIGNATURE_VERIFICATION_FAILED) {
+        printf("Signature is not valid.\n");
+    } else {
+        fprintf(stderr, "Failed to verify signature: 0x%x\n", rc);
+        Fapi_Finalize(&fapiContext);
+        return 1;
+    }
 
     return 0;
 }

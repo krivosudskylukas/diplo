@@ -68,3 +68,49 @@ int signData(FAPI_CONTEXT* fapiContext,
 
     return 0;
 }
+
+std::vector<uint8_t> signDataAndReturnSignature(FAPI_CONTEXT* fapiContext,
+    TSS2_RC rc, const char* keyPath, const char* dataToSign){
+
+    
+    // Hash the data
+    EVP_MD_CTX *mdctx;
+    const EVP_MD *md;
+    unsigned char md_value[EVP_MAX_MD_SIZE];
+    unsigned int md_len;
+
+    OpenSSL_add_all_digests();
+
+    md = EVP_get_digestbyname("sha256");
+
+    if(!md) {
+        printf("Unknown message digest\n");
+        exit(1);
+    }
+    mdctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(mdctx, md, NULL);
+    EVP_DigestUpdate(mdctx, dataToSign, strlen(dataToSign));
+    EVP_DigestFinal_ex(mdctx, md_value, &md_len);
+    EVP_MD_CTX_free(mdctx);
+
+
+    // Sign the hashed data
+    uint8_t* signature;
+    size_t signatureSize;
+    rc = Fapi_Sign(fapiContext, keyPath, NULL, md_value, md_len,  &signature, &signatureSize, NULL, NULL);
+    if (rc != TSS2_RC_SUCCESS) {
+        fprintf(stderr, "Failed to sign data: 0x%x\n", rc);
+        Fapi_Finalize(&fapiContext);
+        return std::vector<uint8_t>(); // Return an empty vector
+
+    }
+    
+    // Convert the signature to a vector
+    std::vector<uint8_t> signatureVector(signature, signature + signatureSize);
+
+    // Free the signature
+    Fapi_Free(signature);
+
+    // Return the signature vector
+    return signatureVector;
+}

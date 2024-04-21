@@ -8,7 +8,7 @@ CXXFLAGS =
 LDFLAGS = -L/usr/local/lib
 
 # Libraries to link against, add with -l
-LDLIBS = -ltss2-fapi -lssl -lcrypto
+LDLIBS = -ltss2-fapi -lssl -lcrypto -lcurl
 
 # Source files
 SOURCES = demo.cpp sources/sign.cpp sources/create_key.cpp sources/verify.cpp sources/file_util.cpp sources/fapi_util.cpp sources/crypto_operations.cpp

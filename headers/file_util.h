@@ -18,5 +18,6 @@ time_t createExpirationDate();
 time_t createStartingDate();
 json loadJsonFile(string name);
 void writeStringFile(string name, string content);
+json createVerificationJson();
 
 #endif // FILE_UTIL_H
