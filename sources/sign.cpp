@@ -40,9 +40,9 @@ int signData(FAPI_CONTEXT* fapiContext,
     // Print the signature
     printf("Signature:\n");
     for (size_t i = 0; i < signatureSize; i++) {
-        printf("%02x", signature[i]);
+        //printf("%02x", signature[i]);
     }
-    printf("\n");
+    //printf("\n");
     
     // Write the signature to a file
     const char* filename = "signature.bin";
