@@ -26,6 +26,9 @@
 using namespace std::chrono;
 using json = nlohmann::json;
 
+const string URL = "http://localhost:8084/api/hello";
+const char* SIGNING_KEY_PATH = "/HS/SRK/signingRsaKey";
+const char* ENCRYPTION_KEY_PATH = "/HS/SRK/cryptographyRsaKey";
 
 // This function creates base64 encoded string from the given data using boost library
 // The function is used to encode data before sending it to the server
@@ -61,66 +64,36 @@ void callVerifyApi(){
     std::string jsonString = createVerificationJson().dump();
     const char* customerVerification = jsonString.c_str();
 
-    const char* keyPath = "/HS/SRK/myRsaKeyToDelete";
-
     // Generating signature for request
-    std::vector<uint8_t> sigi = signDataAndReturnSignature(fapiContext, rc, keyPath, customerVerification);
-    size_t sigiSize = sigi.size();
-    uint8_t* signatureData = sigi.data();
-
-    //signData(fapiContext, rc, keyPath, customerVerification);
-
-
-    // Read the signature from the file
-    /*size_t signatureSize;
-
-    const char* filename = "signature.bin";
-    std::ifstream file(filename, std::ios::binary);
-
-    // Check if the file was successfully opened
-    if (!file) {
-        fprintf(stderr,"Error opening file for reading: %s\n", filename);
-    }
+    std::vector<uint8_t> signature = signDataAndReturnSignature(fapiContext, rc, SIGNING_KEY_PATH, customerVerification);
     
-    // Determine the file size
-    file.seekg(0, std::ios::end);
-    signatureSize = static_cast<size_t>(file.tellg());
-    file.seekg(0, std::ios::beg);
+    if(signature.empty()) {
+        throw std::runtime_error("Failed to sign the data");
+    }
 
-    // Allocate memory for the signature
-    uint8_t* signature = new uint8_t[signatureSize];
+    size_t signatureSize = signature.size();
+    uint8_t* signatureData = signature.data();
 
-    // Read the file into the signature array
-    file.read(reinterpret_cast<char*>(signature), signatureSize);
-
-    // Close the file
-    file.close();*/
-
-    curl_global_init(CURL_GLOBAL_DEFAULT); // Initialize global curl settings
-    curl = curl_easy_init();  // Initialize a curl handle
+    // Initialize curl neccessities
+    curl_global_init(CURL_GLOBAL_DEFAULT); 
+    curl = curl_easy_init();  
 
     if (curl) {
         
         // Set the URL for the REST API endpoint
-        //cout << "Sending request to server...\n";
-        curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:8084/api/hello");
+        curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
         
-        // Convert the data and signature to JSON
+        // Create the request body
         nlohmann::json j;
-        j["data"] = customerVerification;   // Convert jsonFileContent to const unsigned char*
-        j["signature"] = base64_encode(signatureData, sigiSize);  // Assuming signature is your signature
+        j["data"] = customerVerification;  
+        j["signature"] = base64_encode(signatureData, signatureSize);
 
         // Convert the JSON to a string
         std::string postData = j.dump();
         
-        //cout<< "srandicky" << postData << endl;
-        // Set the callback function to receive the data
+        // Set curl options
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callbackFunction);
-
-        // Set the POST data
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
-
-        // Set the custom pointer to the data string
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 
         // Set the Content-Type header
@@ -131,7 +104,6 @@ void callVerifyApi(){
         // Perform the request, res will get the return code
         res = curl_easy_perform(curl);
 
-        //cout << "Request sent\n";
         // Check for errors
         if (res != CURLE_OK) {
             std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << '\n';
@@ -140,6 +112,9 @@ void callVerifyApi(){
             std::cout << "Response: " << readBuffer << '\n';
         }
 
+        if(readBuffer == "Signature is incorrect"){
+            throw std::runtime_error("Invalid signature");
+        }
     
         // Always cleanup
         curl_easy_cleanup(curl);
@@ -149,9 +124,9 @@ void callVerifyApi(){
     }
 
     curl_global_cleanup();
-    verifyDataWithSignatureParam(fapiContext, rc, keyPath, customerVerification, signatureData, sigiSize);
+    verifyDataWithSignatureParam(fapiContext, rc, SIGNING_KEY_PATH, customerVerification, signatureData, signatureSize);
     
-
+    // Decode the base64 encoded response into a binary
     BIO *bio, *b64;
     int decodeLen = readBuffer.size();
     uint8_t* buffer = (uint8_t*)malloc(decodeLen);
@@ -162,15 +137,20 @@ void callVerifyApi(){
     decodeLen = BIO_read(bio, buffer, decodeLen);
     BIO_free_all(bio);
 
-    uint8_t* decryptedText = nullptr; // Add decryptedText parameter
+    // Print out the decoded data
+    uint8_t* decryptedText = nullptr; 
     size_t decryptedTextSize = 0;
-    decryptData(fapiContext, &rc, buffer, decodeLen, keyPath, &decryptedText, &decryptedTextSize);
+    decryptData(fapiContext, &rc, buffer, decodeLen, ENCRYPTION_KEY_PATH, &decryptedText, &decryptedTextSize);
     cout<< "Decrypted text: " << decryptedText << endl;
     cout<< "Buffer: " << buffer << endl;
     cout<< "Decoded len: "<< decodeLen << endl;
+
+    // Write the decoded data to a file and generate a signature
     std::string cipherTextString(reinterpret_cast<char*>(buffer), decodeLen);
     writeStringFile("licenseFile.json", cipherTextString);
-    signData(fapiContext, rc, keyPath, (const char*)buffer);
+    signData(fapiContext, rc, SIGNING_KEY_PATH, (const char*)buffer);
+
+    free(buffer);
 }
 
 static const char* runCmd = "gcc -o myApp demo.cpp -L/usr/local/lib -ltss2-fapi -lssl -lcrypto";
@@ -191,107 +171,30 @@ void printExpirationDate(std::time_t expirationDate) {
 }
 
 bool isNotExpired(FAPI_CONTEXT* fapiContext, TSS2_RC* rc ,const std::string& filename);
+void exportPublicKey(FAPI_CONTEXT* fapiContext, TSS2_RC rc, const char* keyPath, const char* keyFile);
 
 int main() {
     FAPI_CONTEXT* fapiContext;
     TSS2_RC rc;
 
-
-    /*getTpmInfo(fapiContext, rc);
-    printAllStoredObjects(fapiContext, rc);*/
+    //const char* keyPath = "/HS/SRK/myRsaKeyToDelete";
     
-    //createJsonFile("License", time(nullptr), time(nullptr) + 60, {"Functionality1", "Functionality2", "Functionality3"});
-
-    // Part one encrypt and sign data
-    //string jsonFileContent = loadJsonFile("licenseFile.json").dump();
-    //const char* data = jsonFileContent.c_str();
-    const char* keyPath = "/HS/SRK/myRsaKeyToDelete";
-    /*uint8_t *cipherText = NULL; 
-    size_t cipherTextSize = 0;*/
-
-    /*encryptData(fapiContext, &rc, data, keyPath, &cipherText, &cipherTextSize);*/
-
-    //signData(fapiContext, rc, keyPath, data);
-    //verifyData(fapiContext, rc, keyPath, data);
-
-    /*std::string cipherTextString(reinterpret_cast<char*>(cipherText), cipherTextSize);*/
-    //writeStringFile("licenseFile.json", cipherTextString);
-
-    /*bool notExpired = isNotExpired(fapiContext, &rc, "licenseFile.json");
-    cout << "Not expired:" << boolalpha << notExpired << endl;*/
-    //printAllStoredObjects(fapiContext, rc);
     callVerifyApi();
     rc = initFapiContext(&fapiContext);
-
-///////////////////////////////////////////    
-/*const char* keyPath = "/HS/SRK/myRsaKeyToDelete";
-    char* publicKey = nullptr;
-
-    rc = Fapi_ExportKey(fapiContext, keyPath, nullptr, &publicKey);
-    if (rc != TSS2_RC_SUCCESS) {
-        fprintf(stderr, "Failed to export key: 0x%x\n", rc);
-        Fapi_Finalize(&fapiContext);
-        return 1;
-    }
-
-    printf("Key exported successfully.\n");
-
-    std::ofstream file("publicKey.pem");
-    if (!file) {
-        throw std::runtime_error("Could not open file: public.pem");
-    }
-
-    // Write the public key to the file
-    nlohmann::json jsonPublicKey;
     
-    jsonPublicKey = nlohmann::json::parse(publicKey);
 
-    file << jsonPublicKey["pem_ext_public"].get<std::string>();
-    //file << publicKey;
+    //createKey(fapiContext, rc, SIGNING_KEY_PATH, NULL);
+    //createKey(fapiContext, rc, ENCRYPTION_KEY_PATH, NULL);
+    //exportPublicKey(fapiContext, rc, SIGNING_KEY_PATH, "publicKey.pem");
+    //    exportPublicKey(fapiContext, rc, ENCRYPTION_KEY_PATH, "publicEncryptionKey.pem");
+    //exportPublicKey(fapiContext, rc, ENCRYPTION_KEY_PATH, "licenseFile.json");
+    //exportPublicKey(fapiContext, rc, "/HS/SRK/myRsaKeyToDelete", "oldPublicKey.pem");
 
-    // Close the file
-    file.close();
-
-    printf("Public key: %s.\n", jsonPublicKey["pem_ext_public"].get<std::string>().c_str());*/
-    // Part two verify and decrypt data
-    /*bool notExpired = isNotExpired(fapiContext, &rc, "licenseFile.json");
-    cout << "Not expired:" << boolalpha << notExpired << endl;
-    */
-
-/*
-    printf("Data to be encrypted: %s\n", data);
-
-    encryptData(fapiContext, &rc, data, keyPath, &cipherText, &cipherTextSize);
-    decryptData(fapiContext, &rc, cipherText, cipherTextSize, keyPath);
-
-    signData(fapiContext, rc, keyPath, (const char*)cipherText);
-    
-    verifyData(fapiContext, rc, keyPath, (const char*)cipherText);
-    
-    //rc = Fapi_Decrypt(fapiContext, keyPath, cipherText, cipherTextSize, &cipherText, &cipherTextSize);
-    //if (rc != TSS2_RC_SUCCESS) {*/
-
-    ifstream file("licenseFile.json");
-    if (!file) {
-        throw runtime_error("Could not open file: licenseFile.json");
-    }
-
-    string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-    uint8_t* cipherText = reinterpret_cast<uint8_t*>(content.data());
-    size_t cipherTextSize = content.size();
-     uint8_t* decryptedText = nullptr; // Add decryptedText parameter
-    size_t decryptedTextSize = 0;
-    
-    decryptData(fapiContext, &rc, cipherText, cipherTextSize, keyPath, &decryptedText, &decryptedTextSize); // Add decryptedText as parameter
-    cout << decryptedText << endl;
-    cout<< decryptedText << endl;
-        return 0;
-    }
+    return 0;
+}
 
 bool isNotExpired(FAPI_CONTEXT* fapiContext, TSS2_RC* rc ,const std::string& filename) {
-    
-    
+
     ifstream file(filename);
     if (!file) {
         throw runtime_error("Could not open file: " + filename);
@@ -320,4 +223,37 @@ bool isNotExpired(FAPI_CONTEXT* fapiContext, TSS2_RC* rc ,const std::string& fil
 
     // Check if the expiration date is after the current time
     return expirationDate > now;
+}
+
+void exportPublicKey(FAPI_CONTEXT* fapiContext, TSS2_RC rc, const char* keyPath, const char* keyFile){
+    char* publicKey = nullptr;
+
+    rc = Fapi_ExportKey(fapiContext, keyPath, nullptr, &publicKey);
+
+    if (rc != TSS2_RC_SUCCESS) {
+        fprintf(stderr, "Failed to export key: 0x%x\n", rc);
+        Fapi_Finalize(&fapiContext);
+    }
+
+    printf("Key exported successfully.\n");
+
+    std::ofstream file(keyFile);
+    if (!file) {
+        throw std::runtime_error("Could not open file: public.pem");
+    }
+
+    // Write the public key to the file
+    nlohmann::json jsonPublicKey;
+    
+    jsonPublicKey = nlohmann::json::parse(publicKey);
+
+    cout << jsonPublicKey << endl;
+
+    //file << jsonPublicKey["pem_ext_public"].get<std::string>();
+    file << publicKey;
+
+    // Close the file
+    file.close();
+
+    printf("Public key: %s.\n", jsonPublicKey["pem_ext_public"].get<std::string>().c_str());
 }

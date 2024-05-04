@@ -10,11 +10,9 @@ TSS2_RC key_callback(FAPI_CONTEXT *context, const char *description, char **auth
 }
 
 int createKey(FAPI_CONTEXT* fapiContext,
-    TSS2_RC rc){
+    TSS2_RC rc, const char* rsaKeyPath, const char* policy) {
 
-    // Path where the RSA key will be stored in the TPM
-    const char* rsaKeyPath = "/HS/SRK/myRsaKeyToDelete";
-    const char* policy = NULL; // No policy, but you can define one as needed
+    //const char* policy = NULL; // No policy 
     //const char* policy = "{ \"description\": \"Password policy\", \"policy\": { \"type\": \"AuthValue\" } }";
 
     // Password for the key
@@ -24,7 +22,7 @@ int createKey(FAPI_CONTEXT* fapiContext,
     //Fapi_SetAuthCB(fapiContext, (Fapi_CB_Auth)key_callback, (void*)password);
 
 
-    rc = Fapi_CreateKey(fapiContext, rsaKeyPath, NULL, NULL, policy);
+    rc = Fapi_CreateKey(fapiContext, rsaKeyPath, NULL, policy, NULL);
     if (rc != TSS2_RC_SUCCESS) {
         fprintf(stderr, "Failed to create RSA key: 0x%x\n", rc);
         Fapi_Finalize(&fapiContext);

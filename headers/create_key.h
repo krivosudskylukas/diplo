@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 
-int createKey(FAPI_CONTEXT* fapiContext, TSS2_RC rc);
+int createKey(FAPI_CONTEXT* fapiContext, TSS2_RC rc, const char* rsaKeyPath, const char* policy);
 int deleteKey(FAPI_CONTEXT* fapiContext, TSS2_RC rc);
 
 #endif 
