@@ -57,7 +57,9 @@ void callVerifyApi(){
     TSS2_RC rc;
     CURL* curl;
     CURLcode res;
-    std::string readBuffer;  // holds the response from the server
+    std::string readBuffer;  
+    nlohmann::json jsonResponse;
+
 
     rc = initFapiContext(&fapiContext);
 
@@ -91,6 +93,7 @@ void callVerifyApi(){
         // Convert the JSON to a string
         std::string postData = j.dump();
         
+        cout << postData << endl;
         // Set curl options
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callbackFunction);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
@@ -110,9 +113,11 @@ void callVerifyApi(){
         } else {
             // Output the response data
             std::cout << "Response: " << readBuffer << '\n';
+            jsonResponse = nlohmann::json::parse(readBuffer);
+
         }
 
-        if(readBuffer == "Signature is incorrect"){
+        if(jsonResponse["status"] == 500){
             throw std::runtime_error("Invalid signature");
         }
     
@@ -121,36 +126,129 @@ void callVerifyApi(){
 
         // Cleanup the headers list
         curl_slist_free_all(headers);
-    }
 
-    curl_global_cleanup();
-    verifyDataWithSignatureParam(fapiContext, rc, SIGNING_KEY_PATH, customerVerification, signatureData, signatureSize);
+        curl_global_cleanup();
+    //verifyDataWithSignatureParam(fapiContext, rc, SIGNING_KEY_PATH, customerVerification, signatureData, signatureSize);
     
     // Decode the base64 encoded response into a binary
-    BIO *bio, *b64;
-    int decodeLen = readBuffer.size();
+    /*BIO *bio, *b64;
+    int decodeLen = jsonResponse["encryptedResponse"].size();
+    std::string encryptedResponse = jsonResponse["encryptedResponse"];
+
     uint8_t* buffer = (uint8_t*)malloc(decodeLen);
-    bio = BIO_new_mem_buf(readBuffer.data(), -1);
+    bio = BIO_new_mem_buf(encryptedResponse.data(), -1);
     b64 = BIO_new(BIO_f_base64());
     bio = BIO_push(b64, bio);
     BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
     decodeLen = BIO_read(bio, buffer, decodeLen);
+    BIO_free_all(bio);*/
+
+    // Calculate the maximum possible length of the decoded data
+    std::string encryptedResponse = jsonResponse["encryptedResponse"];
+    int decodeLen = 3 * (encryptedResponse.size() / 4);
+
+    // Allocate memory for the decoded buffer
+    std::vector<uint8_t> buffer(decodeLen); // Using vector for automatic memory management
+
+    // Setup BIO for decoding
+    BIO *bio, *b64;
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new_mem_buf(encryptedResponse.data(), encryptedResponse.length());
+    bio = BIO_push(b64, bio);
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+    int actualDecodeLen = BIO_read(bio, buffer.data(), buffer.size());
+
+    buffer.resize(actualDecodeLen);  // Resize buffer to actual data length
     BIO_free_all(bio);
+
+    cout<< encryptedResponse << endl;
+    cout<< "Buffer: " << buffer.data() << endl;
 
     // Print out the decoded data
     uint8_t* decryptedText = nullptr; 
     size_t decryptedTextSize = 0;
-    decryptData(fapiContext, &rc, buffer, decodeLen, ENCRYPTION_KEY_PATH, &decryptedText, &decryptedTextSize);
+    decryptData(fapiContext, &rc, buffer.data(), actualDecodeLen, ENCRYPTION_KEY_PATH, &decryptedText, &decryptedTextSize);
     cout<< "Decrypted text: " << decryptedText << endl;
-    cout<< "Buffer: " << buffer << endl;
+    //cout<< "Buffer: " << buffer.data() << endl;
     cout<< "Decoded len: "<< decodeLen << endl;
 
     // Write the decoded data to a file and generate a signature
-    std::string cipherTextString(reinterpret_cast<char*>(buffer), decodeLen);
-    writeStringFile("licenseFile.json", cipherTextString);
-    signData(fapiContext, rc, SIGNING_KEY_PATH, (const char*)buffer);
+    //std::string cipherTextString(reinterpret_cast<char*>(buffer.data()), decodeLen);
 
-    free(buffer);
+    ofstream file("licenseFile.json",std::ios::binary);
+    if (!file) {
+        throw runtime_error("Could not open file: ");
+    }
+
+    //writeStringFile("licenseFile.json", cipherTextString);
+    file.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+    file.close();
+
+    signData(fapiContext, rc, SIGNING_KEY_PATH, reinterpret_cast<char*>(buffer.data()));
+    
+    //decryptData(fapiContext, &rc, reinterpret_cast<const uint8_t*>(cipherTextString.c_str()), actualDecodeLen, ENCRYPTION_KEY_PATH, &decryptedText, &decryptedTextSize);
+    cout<< "Decrypted text: " << decryptedText << endl;
+
+
+    std::string encryptedSignature = jsonResponse["signature"];
+    int decodeLenSignature = 3 * (encryptedSignature.size() / 4);
+
+    // Allocate memory for the decoded buffer
+    std::vector<uint8_t> bufferSignature(decodeLenSignature); // Using vector for automatic memory management
+
+    // Setup BIO for decoding central signature
+    BIO *bioSignature, *b64Signature;
+    b64Signature = BIO_new(BIO_f_base64());
+    bioSignature = BIO_new_mem_buf(encryptedResponse.data(), encryptedSignature.length());
+    bioSignature = BIO_push(b64Signature, bioSignature);
+    BIO_set_flags(bioSignature, BIO_FLAGS_BASE64_NO_NL);
+    int actualDecodeLenSignature = BIO_read(bioSignature, bufferSignature.data(), bufferSignature.size());
+
+    bufferSignature.resize(actualDecodeLenSignature);  // Resize buffer to actual data length
+    BIO_free_all(bioSignature);
+
+    ofstream fileSignature("centralServerSignature.bin",std::ios::binary);
+    if (!file) {
+        throw runtime_error("Could not open file: ");
+    }
+
+    //writeStringFile("licenseFile.json", cipherTextString);
+    fileSignature.write(reinterpret_cast<const char*>(bufferSignature.data()), bufferSignature.size());
+    fileSignature.close();
+
+    /*size_t signatureSize1;
+
+
+    std::ifstream file1("licenseFile.json", std::ios::binary);
+
+    // Check if the file was successfully opened
+    if (!file1) {
+        fprintf(stderr,"Error opening file for reading: %s\n","as");
+    }
+
+    // Determine the file size
+    file1.seekg(0, std::ios::end);
+    signatureSize1 = static_cast<size_t>(file1.tellg());
+    file1.seekg(0, std::ios::beg);
+
+    // Allocate memory for the signature
+    uint8_t* signature1 = new uint8_t[signatureSize];
+
+    // Read the file into the signature array
+    file1.read(reinterpret_cast<char*>(signature1), signatureSize1);
+
+    // Close the file
+    file1.close();
+
+    decryptData(fapiContext, &rc, signature1, signatureSize1, ENCRYPTION_KEY_PATH, &decryptedText, &decryptedTextSize); // Add decryptedText as parameter
+
+    cout<< "Decrypted text: " << decryptedText << endl;
+
+    verifyData(fapiContext, rc, SIGNING_KEY_PATH, (const char*)signature1);
+    */
+    }
+
+    
 }
 
 static const char* runCmd = "gcc -o myApp demo.cpp -L/usr/local/lib -ltss2-fapi -lssl -lcrypto";
@@ -178,10 +276,42 @@ int main() {
     TSS2_RC rc;
 
     //const char* keyPath = "/HS/SRK/myRsaKeyToDelete";
-    
     callVerifyApi();
     rc = initFapiContext(&fapiContext);
-    
+    //isNotExpired(fapiContext, &rc, "licenseFile.json");
+
+
+    size_t signatureSize1;
+    uint8_t* decryptedText = nullptr; // Add decryptedText parameter
+    size_t decryptedTextSize = 0;
+
+    std::ifstream file1("licenseFile.json", std::ios::binary);
+
+    // Check if the file was successfully opened
+    if (!file1) {
+        fprintf(stderr,"Error opening file for reading: %s\n","as");
+    }
+
+    // Determine the file size
+    file1.seekg(0, std::ios::end);
+    signatureSize1 = static_cast<size_t>(file1.tellg());
+    file1.seekg(0, std::ios::beg);
+
+    // Allocate memory for the signature
+    uint8_t* signature1 = new uint8_t[signatureSize1];
+
+    // Read the file into the signature array
+    file1.read(reinterpret_cast<char*>(signature1), signatureSize1);
+
+    // Close the file
+    file1.close();
+
+    decryptData(fapiContext, &rc, signature1, signatureSize1, ENCRYPTION_KEY_PATH, &decryptedText, &decryptedTextSize); // Add decryptedText as parameter
+
+    cout<< "Decrypted text: " << decryptedText << endl;
+
+    verifyData(fapiContext, rc, SIGNING_KEY_PATH, (const char*)signature1);
+
 
     //createKey(fapiContext, rc, SIGNING_KEY_PATH, NULL);
     //createKey(fapiContext, rc, ENCRYPTION_KEY_PATH, NULL);
@@ -195,7 +325,32 @@ int main() {
 
 bool isNotExpired(FAPI_CONTEXT* fapiContext, TSS2_RC* rc ,const std::string& filename) {
 
-    ifstream file(filename);
+    size_t signatureSize;
+    std::ifstream file1("licenseFile.json", std::ios::binary);
+
+    // Check if the file was successfully opened
+    if (!file1) {
+        fprintf(stderr,"Error opening file for reading: %s\n","as");
+    }
+
+    // Determine the file size
+    file1.seekg(0, std::ios::end);
+    signatureSize = static_cast<size_t>(file1.tellg());
+    file1.seekg(0, std::ios::beg);
+
+    // Allocate memory for the signature
+    uint8_t* signature = new uint8_t[signatureSize];
+
+    // Read the file into the signature array
+    file1.read(reinterpret_cast<char*>(signature), signatureSize);
+
+    // Close the file
+    file1.close();
+
+
+
+
+    /*ifstream file(filename);
     if (!file) {
         throw runtime_error("Could not open file: " + filename);
     }
@@ -204,13 +359,18 @@ bool isNotExpired(FAPI_CONTEXT* fapiContext, TSS2_RC* rc ,const std::string& fil
 
     uint8_t* cipherText = reinterpret_cast<uint8_t*>(content.data());
     size_t cipherTextSize = content.size();
-    const char* keyPath = "/HS/SRK/myRsaKeyToDelete";
+
+    cout<< cipherText << endl;
+    cout<< cipherTextSize << endl;*/
+
+
     uint8_t* decryptedText = nullptr; // Add decryptedText parameter
     size_t decryptedTextSize = 0;
+    verifyData(fapiContext, *rc, SIGNING_KEY_PATH, (const char*)signature);
 
-    verifyData(fapiContext, *rc, keyPath, (const char*)cipherText);
 
-    decryptData(fapiContext, rc, cipherText, cipherTextSize, keyPath, &decryptedText, &decryptedTextSize); // Add decryptedText as parameter
+    //decryptData(fapiContext, rc, cipherText, cipherTextSize, ENCRYPTION_KEY_PATH, &decryptedText, &decryptedTextSize); // Add decryptedText as parameter
+    decryptData(fapiContext, rc, signature, signatureSize, ENCRYPTION_KEY_PATH, &decryptedText, &decryptedTextSize); // Add decryptedText as parameter
 
     cout<< decryptedText << endl;
     json jsonData = json::parse(decryptedText);
@@ -250,7 +410,7 @@ void exportPublicKey(FAPI_CONTEXT* fapiContext, TSS2_RC rc, const char* keyPath,
     cout << jsonPublicKey << endl;
 
     //file << jsonPublicKey["pem_ext_public"].get<std::string>();
-    file << publicKey;
+    //file << publicKey;
 
     // Close the file
     file.close();

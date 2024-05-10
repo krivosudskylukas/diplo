@@ -1,0 +1,34 @@
+{
+    "objectType":3,
+    "pem_ext_public":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsrLkgGho/u1gCuEj6xuW\nXNs/XzKsqN0ALg3JVAzr9e2p4VE20vEz0KHtANcvMyX1OstrzlKjeejStMcuoNrx\nXOpLFpSyLpP5tlSI/5qwAbQROcKrqNIiN/Iu9qM+gz73OeLfeH5O9cxcT7ftPxv7\nTZV9j9tKTeJVnkxymcx+S1EpAabC/cz/Ewci77rI4O/fhh6UP4ZttYEFZcIYpiil\nd70IAkVh+JQrAIoYGCcFAzfQfaa2vpjJTuiwyw/rq9lrW0sQTHRmNo8IfIIqcmhZ\nogJ8/UwBWygHF5BeG9WAcv7veQeiRvVw64RowlIKON3oeO4dQmhY51H+vLmdjbob\nTwIDAQAB\n-----END PUBLIC KEY-----\n",
+    "public":
+        {
+            "publicArea":
+                {
+                    "authPolicy":"",
+                    "nameAlg":"sha256",
+                    "objectAttributes":{
+                        "adminWithPolicy":0,
+                        "decrypt":1,
+                        "encryptedDuplication":0,
+                        "fixedParent":1,
+                        "fixedTPM":1,
+                        "noDA":0,
+                        "restricted":0,
+                        "sensitiveDataOrigin":1,
+                        "sign":1,
+                        "stClear":0,
+                        "userWithAuth":1},
+                    "parameters":{
+                        "exponent":0,
+                        "keyBits":2048,
+                        "scheme":{"scheme":"NULL"},
+                        "symmetric":{"algorithm":"NULL"}
+                    },
+                    "type":"RSA",
+                    "unique":"b2b2e4806868feed600ae123eb1b965cdb3f5f32aca8dd002e0dc9540cebf5eda9e15136d2f133d0a1ed00d72f3325f53acb6bce52a379e8d2b4c72ea0daf15cea4b1694b22e93f9b65488ff9ab001b41139c2aba8d22237f22ef6a33e833ef739e2df787e4ef5cc5c4fb7ed3f1bfb4d957d8fdb4a4de2559e4c7299cc7e4b512901a6c2fdccff130722efbac8e0efdf861e943f866db5810565c218a628a577bd08024561f8942b008a181827050337d07da6b6be98c94ee8b0cb0febabd96b5b4b104c7466368f087c822a726859a2027cfd4c015b280717905e1bd58072feef7907a246f570eb8468c2520a38dde878ee1d426858e751febcb99d8dba1b4f"
+                },
+                "size":278
+        },
+    "system":"NO"
+}
